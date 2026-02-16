@@ -1,0 +1,579 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="theme-color" content="#2563eb">
+    <meta name="description" content="Create product catalogs with photos and CHF prices">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="Catalog">
+    <link rel="manifest" href="manifest.json">
+    <link rel="apple-touch-icon" href="icon-192.png">
+    <title>Catalog Maker</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+    <style>
+        *{margin:0;padding:0;box-sizing:border-box}
+        :root{--primary:#2563eb;--primary-dark:#1d4ed8;--secondary:#dc2626;--accent:#059669;--bg:#f8fafc;--card:#fff;--text:#1e293b;--text-light:#64748b;--border:#e2e8f0}
+        body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;padding-bottom:80px}
+        .header{position:fixed;top:0;left:0;right:0;height:56px;background:var(--primary);display:flex;align-items:center;justify-content:space-between;padding:0 16px;z-index:100;box-shadow:0 2px 10px rgba(0,0,0,0.1)}
+        .header-title{color:#fff;font-size:18px;font-weight:700}
+        .header-actions{display:flex;gap:8px}
+        .header-btn{width:36px;height:36px;border-radius:8px;border:none;background:rgba(255,255,255,0.15);color:#fff;cursor:pointer;display:flex;align-items:center;justify-content:center}
+        .header-btn:hover{background:rgba(255,255,255,0.25)}
+        .tabs{position:fixed;top:56px;left:0;right:0;display:flex;background:var(--card);z-index:99;border-bottom:1px solid var(--border)}
+        .tab{flex:1;padding:12px;text-align:center;font-size:14px;font-weight:600;color:var(--text-light);border-bottom:3px solid transparent;cursor:pointer}
+        .tab.active{color:var(--primary);border-bottom-color:var(--primary)}
+        .content{padding:112px 12px 100px}
+        .tab-content{display:none}.tab-content.active{display:block}
+        .empty{text-align:center;padding:60px 20px}
+        .empty-icon{font-size:64px;color:var(--border);margin-bottom:16px}
+        .empty-title{font-size:16px;font-weight:600;margin-bottom:8px}
+        .empty-text{font-size:14px;color:var(--text-light)}
+        .gallery{display:grid;grid-template-columns:repeat(2,1fr);gap:10px}
+        .gallery-item{background:var(--card);border-radius:12px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,0.08);position:relative;cursor:pointer}
+        .gallery-item img{width:100%;height:140px;object-fit:contain;background:#f1f5f9}
+        .gallery-item-info{padding:8px 10px}
+        .gallery-item-name{font-size:12px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+        .gallery-item-price{font-size:16px;font-weight:800;color:var(--secondary);margin-top:2px}
+        .gallery-item-delete{position:absolute;top:6px;right:6px;width:24px;height:24px;border-radius:50%;background:#ef4444;color:#fff;border:none;cursor:pointer;font-size:14px;z-index:2}
+        .gallery-item-edit{position:absolute;top:6px;left:6px;width:24px;height:24px;border-radius:50%;background:var(--primary);color:#fff;border:none;cursor:pointer;font-size:14px;z-index:2;display:flex;align-items:center;justify-content:center}
+        .section{background:var(--card);border-radius:12px;padding:14px;margin-bottom:12px}
+        .section-title{font-size:13px;font-weight:700;margin-bottom:12px;display:flex;align-items:center;gap:6px}
+        .section-title .material-icons{color:var(--primary);font-size:18px}
+        .form-group{margin-bottom:12px}
+        .form-label{font-size:11px;font-weight:600;color:var(--text-light);margin-bottom:4px;display:block}
+        .form-input{width:100%;height:44px;border:1px solid var(--border);border-radius:10px;padding:0 12px;font-size:14px;font-family:inherit}
+        .form-input:focus{outline:none;border-color:var(--primary)}
+        .form-textarea{height:70px;padding:10px 12px;resize:none}
+        .toggle-row{display:flex;align-items:center;justify-content:space-between;padding:10px 0;border-bottom:1px solid var(--border)}
+        .toggle-row:last-child{border-bottom:none}
+        .toggle-text{font-size:13px;font-weight:500}
+        .toggle{width:44px;height:24px;border-radius:12px;background:var(--border);border:none;cursor:pointer;position:relative}
+        .toggle::after{content:'';position:absolute;width:18px;height:18px;border-radius:50%;background:#fff;top:3px;left:3px;transition:all 0.2s}
+        .toggle.active{background:var(--primary)}
+        .toggle.active::after{left:23px}
+        .color-row{display:flex;align-items:center;justify-content:space-between;padding:8px 0}
+        .color-input{width:36px;height:36px;border:none;border-radius:8px;cursor:pointer}
+        .logo-area{display:flex;align-items:center;gap:12px;margin-bottom:12px}
+        .logo-box{width:60px;height:60px;border:2px dashed var(--border);border-radius:10px;display:flex;align-items:center;justify-content:center;cursor:pointer;overflow:hidden;background:var(--bg)}
+        .logo-box img{width:100%;height:100%;object-fit:contain}
+        .btn{width:100%;height:48px;border-radius:12px;border:none;font-size:14px;font-weight:600;font-family:inherit;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px}
+        .btn-primary{background:var(--primary);color:#fff}
+        .btn-secondary{background:var(--bg);color:var(--text);margin-top:8px}
+        .btn-danger{background:#fef2f2;color:#dc2626;margin-top:8px;border:1px solid #fecaca}
+        .fab{position:fixed;bottom:20px;right:20px;width:56px;height:56px;border-radius:50%;background:linear-gradient(135deg,var(--primary),var(--primary-dark));color:#fff;border:none;box-shadow:0 4px 15px rgba(37,99,235,0.4);cursor:pointer;display:flex;align-items:center;justify-content:center;z-index:90;animation:pulse 2s infinite}
+        @keyframes pulse{0%,100%{transform:scale(1)}50%{transform:scale(1.05)}}
+        .sheet-bg{position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:200;opacity:0;visibility:hidden;transition:all 0.3s}
+        .sheet-bg.active{opacity:1;visibility:visible}
+        .sheet{position:fixed;bottom:0;left:0;right:0;background:var(--card);border-radius:20px 20px 0 0;z-index:201;transform:translateY(100%);transition:transform 0.3s;max-height:90vh;overflow-y:auto}
+        .sheet.active{transform:translateY(0)}
+        .sheet-handle{width:40px;height:4px;background:var(--border);border-radius:2px;margin:12px auto}
+        .sheet-content{padding:0 16px 24px}
+        .sheet-title{font-size:18px;font-weight:700;text-align:center;margin-bottom:16px}
+        .camera-box{width:100%;height:200px;background:#000;border-radius:12px;overflow:hidden;margin-bottom:12px;position:relative}
+        .camera-box video,.camera-box img{width:100%;height:100%;object-fit:contain}
+        .camera-placeholder{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;color:#fff;background:#334155;cursor:pointer}
+        .camera-controls{display:flex;align-items:center;justify-content:center;gap:24px;margin-bottom:12px}
+        .capture-btn{width:56px;height:56px;border-radius:50%;background:#fff;border:4px solid var(--primary);cursor:pointer;display:flex;align-items:center;justify-content:center}
+        .capture-btn-inner{width:40px;height:40px;border-radius:50%;background:var(--primary)}
+        .cam-action{width:40px;height:40px;border-radius:50%;background:var(--bg);border:none;cursor:pointer;display:flex;align-items:center;justify-content:center}
+        .fields-section{background:var(--bg);border-radius:12px;padding:12px;margin-bottom:12px}
+        .fields-title{font-size:12px;font-weight:600;color:var(--text-light);margin-bottom:10px;display:flex;align-items:center;gap:4px}
+        .toast{position:fixed;bottom:90px;left:50%;transform:translateX(-50%) translateY(20px);background:var(--text);color:#fff;padding:10px 20px;border-radius:10px;font-size:13px;z-index:300;opacity:0;transition:all 0.3s}
+        .toast.show{transform:translateX(-50%) translateY(0);opacity:1}
+        .loading-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:400;display:none;align-items:center;justify-content:center}
+        .loading-overlay.show{display:flex}
+        .loading-content{background:var(--card);padding:24px 32px;border-radius:16px;text-align:center}
+        .loading-spinner{width:40px;height:40px;border:4px solid var(--border);border-top-color:var(--primary);border-radius:50%;animation:spin 1s linear infinite;margin:0 auto 12px}
+        @keyframes spin{to{transform:rotate(360deg)}}
+        .layout-selector{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:16px}
+        .layout-option{aspect-ratio:1;border:2px solid var(--border);border-radius:10px;cursor:pointer;display:flex;flex-direction:column;align-items:center;justify-content:center;background:var(--bg);transition:all 0.2s}
+        .layout-option.active{border-color:var(--primary);background:rgba(37,99,235,0.1)}
+        .layout-icon{font-size:28px;color:var(--text-light);margin-bottom:4px}
+        .layout-option.active .layout-icon{color:var(--primary)}
+        .layout-label{font-size:11px;font-weight:600;color:var(--text-light)}
+        .layout-option.active .layout-label{color:var(--primary)}
+        .pdf-preview-container{width:100%;aspect-ratio:210/297;background:#fff;border-radius:8px;box-shadow:0 2px 10px rgba(0,0,0,0.1);margin-bottom:16px;overflow:hidden}
+        .pdf-page-header{padding:8px;background:var(--primary);color:#fff;display:flex;align-items:center;gap:8px}
+        .pdf-page-content{padding:12px;display:flex;flex-direction:column;gap:8px;height:calc(100% - 40px)}
+        .pdf-page-item{background:var(--bg);border-radius:6px;overflow:hidden;display:flex;flex-direction:column;flex:1}
+        .pdf-page-item img{width:100%;flex:1;object-fit:contain;background:#fff}
+        .pdf-page-item-info{padding:4px 6px;text-align:center}
+        .pdf-page-item-name{font-size:7px;font-weight:600;margin-bottom:2px}
+        .pdf-page-item-price{font-size:9px;font-weight:800;color:var(--secondary)}
+    </style>
+</head>
+<body>
+    <header class="header">
+        <h1 class="header-title">Catalog Maker</h1>
+        <div class="header-actions">
+            <button class="header-btn" id="importPdfBtn" title="Import PDF"><span class="material-icons">upload_file</span></button>
+            <button class="header-btn" id="appSettingsBtn" title="Settings"><span class="material-icons">settings</span></button>
+            <button class="header-btn" id="pdfBtn" title="Export PDF"><span class="material-icons">picture_as_pdf</span></button>
+        </div>
+    </header>
+    
+    <input type="file" id="pdfFileInput" accept=".pdf" hidden>
+    
+    <nav class="tabs">
+        <div class="tab active" data-tab="products">Products</div>
+        <div class="tab" data-tab="shop">Shop Info</div>
+    </nav>
+    
+    <main class="content">
+        <div class="tab-content active" id="productsTab">
+            <div class="empty" id="empty">
+                <span class="material-icons empty-icon">inventory_2</span>
+                <h2 class="empty-title">No Products</h2>
+                <p class="empty-text">Tap + to add or import PDF</p>
+            </div>
+            <div class="gallery" id="gallery" style="display:none"></div>
+        </div>
+        <div class="tab-content" id="shopTab">
+            <div class="section">
+                <div class="section-title"><span class="material-icons">store</span>Shop Details</div>
+                <div class="logo-area">
+                    <div class="logo-box" id="logoBox"><span class="material-icons" style="color:var(--text-light)">add_photo_alternate</span></div>
+                    <div><div style="font-size:13px;font-weight:600">Shop Logo</div><div style="font-size:12px;color:var(--text-light)">Tap to upload</div></div>
+                    <input type="file" id="logoInput" accept="image/*" hidden>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Shop Name</label>
+                    <input type="text" class="form-input" id="shopName" placeholder="Your Shop Name">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Address</label>
+                    <textarea class="form-input form-textarea" id="shopAddress" placeholder="Your address"></textarea>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">WhatsApp Number</label>
+                    <input type="text" class="form-input" id="whatsapp" placeholder="+41 79 123 45 67">
+                </div>
+            </div>
+            <div class="section">
+                <div class="section-title"><span class="material-icons">palette</span>Colors</div>
+                <div class="color-row"><span class="toggle-text">Header Background</span><input type="color" class="color-input" id="headerColor" value="#1e40af"></div>
+                <div class="color-row"><span class="toggle-text">Price Color</span><input type="color" class="color-input" id="priceColor" value="#dc2626"></div>
+            </div>
+            <div class="section">
+                <div class="section-title"><span class="material-icons">visibility</span>Show in PDF</div>
+                <div class="toggle-row"><span class="toggle-text">Shop Name</span><button class="toggle active" id="showName"></button></div>
+                <div class="toggle-row"><span class="toggle-text">Address</span><button class="toggle active" id="showAddress"></button></div>
+                <div class="toggle-row"><span class="toggle-text">WhatsApp</span><button class="toggle active" id="showWhatsapp"></button></div>
+            </div>
+            <button class="btn btn-primary" id="saveShop"><span class="material-icons">save</span>Save Settings</button>
+        </div>
+    </main>
+    
+    <button class="fab" id="fab"><span class="material-icons">add</span></button>
+
+    <div class="sheet-bg" id="editBg"></div>
+    <div class="sheet" id="editSheet">
+        <div class="sheet-handle"></div>
+        <div class="sheet-content">
+            <h2 class="sheet-title" id="editTitle">Add Product</h2>
+            <div class="camera-box">
+                <video id="video" autoplay playsinline style="display:none"></video>
+                <img id="editImg" style="display:none">
+                <div class="camera-placeholder" id="cameraPlaceholder">
+                    <span class="material-icons" style="font-size:48px">camera_alt</span>
+                    <p>Tap to start camera</p>
+                </div>
+            </div>
+            <div class="camera-controls" id="cameraControls">
+                <button class="cam-action" id="galleryBtn"><span class="material-icons">photo_library</span></button>
+                <button class="capture-btn" id="captureBtn"><div class="capture-btn-inner"></div></button>
+                <button class="cam-action" id="switchBtn"><span class="material-icons">flip_camera_ios</span></button>
+            </div>
+            <div class="fields-section">
+                <div class="fields-title"><span class="material-icons" style="font-size:14px">edit</span> Product Details</div>
+                <div class="form-group">
+                    <label class="form-label">Product Name</label>
+                    <input type="text" class="form-input" id="productName" placeholder="Enter product name">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Price in CHF</label>
+                    <input type="number" class="form-input" id="productPrice" placeholder="99.99" step="0.01">
+                </div>
+            </div>
+            <button class="btn btn-primary" id="saveProduct"><span class="material-icons">check</span>Save Product</button>
+            <button class="btn btn-secondary" id="cancelEdit"><span class="material-icons">close</span>Cancel</button>
+        </div>
+    </div>
+
+    <div class="sheet-bg" id="pdfBg"></div>
+    <div class="sheet" id="pdfSheet">
+        <div class="sheet-handle"></div>
+        <div class="sheet-content">
+            <h2 class="sheet-title">Export PDF Catalog</h2>
+            <div class="section">
+                <div class="section-title"><span class="material-icons">grid_view</span>Images Per Page</div>
+                <div class="layout-selector">
+                    <div class="layout-option" data-layout="1">
+                        <div class="layout-icon">█</div>
+                        <div class="layout-label">1</div>
+                    </div>
+                    <div class="layout-option" data-layout="2">
+                        <div class="layout-icon">▄</div>
+                        <div class="layout-label">2</div>
+                    </div>
+                    <div class="layout-option" data-layout="3">
+                        <div class="layout-icon">▀</div>
+                        <div class="layout-label">3</div>
+                    </div>
+                    <div class="layout-option active" data-layout="4">
+                        <div class="layout-icon">▦</div>
+                        <div class="layout-label">4</div>
+                    </div>
+                </div>
+            </div>
+            <div class="section">
+                <div class="section-title"><span class="material-icons">visibility</span>Preview</div>
+                <div class="pdf-preview-container" id="pdfPreview"></div>
+            </div>
+            <div style="display:flex;gap:10px">
+                <button class="btn btn-primary" id="downloadPdf" style="margin:0"><span class="material-icons">download</span>Download PDF</button>
+                <button class="btn btn-secondary" id="sharePdf" style="margin:0;background:var(--accent);color:#fff"><span class="material-icons">share</span>Share</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="sheet-bg" id="appSettingsBg"></div>
+    <div class="sheet" id="appSettingsSheet">
+        <div class="sheet-handle"></div>
+        <div class="sheet-content">
+            <h2 class="sheet-title">App Settings</h2>
+            <div class="section">
+                <div class="section-title"><span class="material-icons">sell</span>Price Format</div>
+                <div class="form-group">
+                    <select class="form-input" id="priceFormat">
+                        <option value="chf">CHF 99.99</option>
+                        <option value="after">99.99 CHF</option>
+                        <option value="fr">Fr. 99.99</option>
+                    </select>
+                </div>
+            </div>
+            <div class="section">
+                <div class="section-title"><span class="material-icons">storage</span>Data Management</div>
+                <button class="btn btn-secondary" id="exportData" style="margin-top:0"><span class="material-icons">upload</span>Export All Data</button>
+                <button class="btn btn-secondary" id="importData"><span class="material-icons">download</span>Import Data</button>
+                <input type="file" id="importFile" accept=".json" hidden>
+                <button class="btn btn-danger" id="clearData"><span class="material-icons">delete</span>Clear All Data</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="loading-overlay" id="loadingOverlay">
+        <div class="loading-content">
+            <div class="loading-spinner"></div>
+            <p id="loadingText">Processing...</p>
+        </div>
+    </div>
+
+    <div class="toast" id="toast"></div>
+
+    <script>
+        pdfjsLib.GlobalWorkerOptions.workerSrc='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+        let products=JSON.parse(localStorage.getItem('products')||'[]');
+        let settings=JSON.parse(localStorage.getItem('settings')||'{}');
+        let stream=null,facing='environment',capturedData=null,editingIndex=-1,pdfLayout=4;
+        settings={logo:'',shopName:'',shopAddress:'',whatsapp:'',headerColor:'#1e40af',priceColor:'#dc2626',showName:1,showAddress:1,showWhatsapp:1,priceFormat:'chf',...settings};
+        const $=id=>document.getElementById(id);
+        const empty=$('empty'),gallery=$('gallery'),toast=$('toast');
+        function showToast(m){toast.textContent=m;toast.classList.add('show');setTimeout(()=>toast.classList.remove('show'),2500)}
+        function formatPrice(p){const n=parseFloat(p);if(isNaN(n))return'';const f=n.toFixed(2);return settings.priceFormat==='after'?f+' CHF':settings.priceFormat==='fr'?'Fr. '+f:'CHF '+f}
+        function saveData(){localStorage.setItem('products',JSON.stringify(products));localStorage.setItem('settings',JSON.stringify(settings))}
+        function showLoading(text='Processing...'){$('loadingText').textContent=text;$('loadingOverlay').classList.add('show')}
+        function hideLoading(){$('loadingOverlay').classList.remove('show')}
+        function render(){
+            if(products.length===0){empty.style.display='block';gallery.style.display='none';return}
+            empty.style.display='none';gallery.style.display='grid';
+            gallery.innerHTML=products.map((p,i)=>`
+                <div class="gallery-item" onclick="editProduct(${i})">
+                    <button class="gallery-item-edit" onclick="event.stopPropagation();editProduct(${i})"><span class="material-icons" style="font-size:14px">edit</span></button>
+                    <button class="gallery-item-delete" onclick="event.stopPropagation();deleteProduct(${i})">×</button>
+                    <img src="${p.image}">
+                    <div class="gallery-item-info">
+                        <div class="gallery-item-name">${p.name||'Click to add name'}</div>
+                        ${p.price?`<div class="gallery-item-price">${formatPrice(p.price)}</div>`:'<div style="font-size:11px;color:var(--text-light)">Click to add price</div>'}
+                    </div>
+                </div>
+            `).join('');
+        }
+        function deleteProduct(i){if(confirm('Delete this product?')){products.splice(i,1);saveData();render();showToast('Deleted')}}
+        function editProduct(i){
+            editingIndex=i;const p=products[i];
+            $('editTitle').textContent='Edit Product';
+            $('productName').value=p.name||'';
+            $('productPrice').value=p.price||'';
+            $('editImg').src=p.image;
+            $('editImg').style.display='block';
+            $('cameraPlaceholder').style.display='none';
+            $('cameraControls').style.display='none';
+            capturedData=p.image;
+            openSheet($('editSheet'),$('editBg'));
+        }
+        document.querySelectorAll('.tab').forEach(t=>t.addEventListener('click',()=>{
+            document.querySelectorAll('.tab').forEach(x=>x.classList.remove('active'));
+            document.querySelectorAll('.tab-content').forEach(x=>x.classList.remove('active'));
+            t.classList.add('active');
+            $(t.dataset.tab+'Tab').classList.add('active');
+        }));
+        function openSheet(s,b){b.classList.add('active');s.classList.add('active')}
+        function closeSheet(s,b){b.classList.remove('active');s.classList.remove('active')}
+        document.querySelectorAll('.toggle').forEach(b=>b.addEventListener('click',()=>b.classList.toggle('active')));
+        function loadSettings(){
+            $('shopName').value=settings.shopName||'';
+            $('shopAddress').value=settings.shopAddress||'';
+            $('whatsapp').value=settings.whatsapp||'';
+            $('headerColor').value=settings.headerColor;
+            $('priceColor').value=settings.priceColor;
+            $('showName').classList.toggle('active',settings.showName);
+            $('showAddress').classList.toggle('active',settings.showAddress);
+            $('showWhatsapp').classList.toggle('active',settings.showWhatsapp);
+            $('priceFormat').value=settings.priceFormat;
+            if(settings.logo)$('logoBox').innerHTML=`<img src="${settings.logo}">`;
+        }
+        $('saveShop').addEventListener('click',()=>{
+            settings.shopName=$('shopName').value;
+            settings.shopAddress=$('shopAddress').value;
+            settings.whatsapp=$('whatsapp').value;
+            settings.headerColor=$('headerColor').value;
+            settings.priceColor=$('priceColor').value;
+            settings.showName=$('showName').classList.contains('active');
+            settings.showAddress=$('showAddress').classList.contains('active');
+            settings.showWhatsapp=$('showWhatsapp').classList.contains('active');
+            saveData();showToast('Settings saved!');
+        });
+        $('logoBox').addEventListener('click',()=>$('logoInput').click());
+        $('logoInput').addEventListener('change',e=>{
+            const f=e.target.files[0];
+            if(f){const r=new FileReader();r.onload=e=>{settings.logo=e.target.result;$('logoBox').innerHTML=`<img src="${settings.logo}">`};r.readAsDataURL(f)}
+        });
+        async function startCamera(){
+            try{
+                if(stream)stream.getTracks().forEach(t=>t.stop());
+                stream=await navigator.mediaDevices.getUserMedia({video:{facingMode:facing}});
+                $('video').srcObject=stream;
+                $('video').style.display='block';
+                $('cameraPlaceholder').style.display='none';
+            }catch(e){showToast('Camera error')}
+        }
+        function stopCamera(){if(stream){stream.getTracks().forEach(t=>t.stop());stream=null}}
+        $('fab').addEventListener('click',()=>{
+            editingIndex=-1;
+            $('editTitle').textContent='Add Product';
+            $('productName').value='';
+            $('productPrice').value='';
+            capturedData=null;
+            $('editImg').style.display='none';
+            $('video').style.display='none';
+            $('cameraPlaceholder').style.display='flex';
+            $('cameraControls').style.display='flex';
+            openSheet($('editSheet'),$('editBg'));
+        });
+        $('cameraPlaceholder').addEventListener('click',startCamera);
+        $('captureBtn').addEventListener('click',()=>{
+            const v=$('video'),c=document.createElement('canvas');
+            c.width=v.videoWidth;c.height=v.videoHeight;
+            c.getContext('2d').drawImage(v,0,0);
+            capturedData=c.toDataURL('image/jpeg',0.9);
+            $('editImg').src=capturedData;
+            $('editImg').style.display='block';
+            $('video').style.display='none';
+            $('cameraControls').style.display='none';
+            stopCamera();
+        });
+        $('switchBtn').addEventListener('click',()=>{facing=facing==='environment'?'user':'environment';startCamera()});
+        $('galleryBtn').addEventListener('click',()=>{
+            const i=document.createElement('input');
+            i.type='file';i.accept='image/*';
+            i.onchange=e=>{
+                const f=e.target.files[0];
+                if(f){
+                    const r=new FileReader();
+                    r.onload=e=>{
+                        capturedData=e.target.result;
+                        $('editImg').src=capturedData;
+                        $('editImg').style.display='block';
+                        $('cameraPlaceholder').style.display='none';
+                        $('cameraControls').style.display='none';
+                    };
+                    r.readAsDataURL(f);
+                }
+            };
+            i.click();
+        });
+        $('saveProduct').addEventListener('click',()=>{
+            if(!capturedData)return showToast('Please take or select a photo first');
+            const product={id:Date.now(),image:capturedData,name:$('productName').value.trim(),price:$('productPrice').value.trim()};
+            if(editingIndex>=0){products[editingIndex]=product}else{products.push(product)}
+            saveData();render();closeSheet($('editSheet'),$('editBg'));stopCamera();showToast(editingIndex>=0?'Product updated!':'Product saved!');
+        });
+        $('cancelEdit').addEventListener('click',()=>{closeSheet($('editSheet'),$('editBg'));stopCamera()});
+        $('editBg').addEventListener('click',()=>{closeSheet($('editSheet'),$('editBg'));stopCamera()});
+        $('importPdfBtn').addEventListener('click',()=>$('pdfFileInput').click());
+        $('pdfFileInput').addEventListener('change',async(e)=>{
+            const file=e.target.files[0];if(!file)return;
+            showLoading('Reading PDF...');
+            try{
+                const arrayBuffer=await file.arrayBuffer();
+                const pdf=await pdfjsLib.getDocument(arrayBuffer).promise;
+                for(let pageNum=1;pageNum<=pdf.numPages;pageNum++){
+                    $('loadingText').textContent=`Extracting page ${pageNum}/${pdf.numPages}...`;
+                    const page=await pdf.getPage(pageNum);
+                    const viewport=page.getViewport({scale:2});
+                    const canvas=document.createElement('canvas');
+                    canvas.width=viewport.width;canvas.height=viewport.height;
+                    const ctx=canvas.getContext('2d');
+                    await page.render({canvasContext:ctx,viewport:viewport}).promise;
+                    const imageData=canvas.toDataURL('image/jpeg',0.9);
+                    products.push({id:Date.now()+pageNum,image:imageData,name:`Page ${pageNum}`,price:''});
+                }
+                saveData();render();hideLoading();showToast(`Imported ${pdf.numPages} pages!`);
+            }catch(err){hideLoading();showToast('Error reading PDF');console.error(err)}
+            e.target.value='';
+        });
+        document.querySelectorAll('.layout-option').forEach(opt=>{
+            opt.addEventListener('click',()=>{
+                document.querySelectorAll('.layout-option').forEach(o=>o.classList.remove('active'));
+                opt.classList.add('active');
+                pdfLayout=parseInt(opt.dataset.layout);
+                updatePdfPreview();
+            });
+        });
+        function updatePdfPreview(){
+            const preview=$('pdfPreview');
+            const itemsToShow=products.slice(0,pdfLayout);
+            let headerHtml='';
+            if(settings.logo||settings.shopName||settings.shopAddress||settings.whatsapp){
+                headerHtml=`<div class="pdf-page-header" style="background:${settings.headerColor}">`;
+                if(settings.logo)headerHtml+=`<img src="${settings.logo}" style="width:24px;height:24px;object-fit:contain">`;
+                headerHtml+=`<div style="flex:1">`;
+                if(settings.showName&&settings.shopName)headerHtml+=`<div style="font-size:10px;font-weight:700">${settings.shopName}</div>`;
+                if(settings.showAddress&&settings.shopAddress)headerHtml+=`<div style="font-size:7px;opacity:0.9">${settings.shopAddress}</div>`;
+                if(settings.showWhatsapp&&settings.whatsapp)headerHtml+=`<div style="font-size:7px;color:#fbbf24">📱 ${settings.whatsapp}</div>`;
+                headerHtml+=`</div></div>`;
+            }
+            let contentHtml=`<div class="pdf-page-content">`;
+            itemsToShow.forEach(p=>{
+                contentHtml+=`<div class="pdf-page-item"><img src="${p.image}"><div class="pdf-page-item-info">`;
+                if(p.name)contentHtml+=`<div class="pdf-page-item-name">${p.name}</div>`;
+                if(p.price)contentHtml+=`<div class="pdf-page-item-price" style="color:${settings.priceColor}">${formatPrice(p.price)}</div>`;
+                contentHtml+=`</div></div>`;
+            });
+            contentHtml+=`</div>`;
+            preview.innerHTML=headerHtml+contentHtml;
+        }
+        $('pdfBtn').addEventListener('click',()=>{
+            if(products.length===0)return showToast('No products to export');
+            openSheet($('pdfSheet'),$('pdfBg'));updatePdfPreview();
+        });
+        $('pdfBg').addEventListener('click',()=>closeSheet($('pdfSheet'),$('pdfBg')));
+        async function generatePDF(){
+            const{jsPDF}=window.jspdf;
+            const doc=new jsPDF();
+            const pageW=doc.internal.pageSize.getWidth();
+            const pageH=doc.internal.pageSize.getHeight();
+            const margin=10;
+            const headerH=(settings.logo||settings.shopName)?25:0;
+            const availableH=pageH-margin*2-headerH;
+            const itemsPerPage=pdfLayout;
+            const totalPages=Math.ceil(products.length/itemsPerPage);
+            for(let page=0;page<totalPages;page++){
+                if(page>0)doc.addPage();
+                let currentY=margin;
+                if(headerH>0){
+                    const hex=settings.headerColor.replace('#','');
+                    doc.setFillColor(parseInt(hex.substr(0,2),16),parseInt(hex.substr(2,2),16),parseInt(hex.substr(4,2),16));
+                    doc.rect(0,0,pageW,headerH,'F');
+                    let hx=margin;
+                    if(settings.logo){try{doc.addImage(settings.logo,'PNG',hx,5,15,15);hx+=18}catch(e){}}
+                    doc.setTextColor(255,255,255);
+                    if(settings.showName&&settings.shopName){doc.setFontSize(12);doc.setFont(undefined,'bold');doc.text(settings.shopName,hx,12)}
+                    if(settings.showAddress&&settings.shopAddress){doc.setFontSize(8);doc.text(settings.shopAddress,hx,18)}
+                    if(settings.showWhatsapp&&settings.whatsapp){doc.setFontSize(8);doc.text('WhatsApp: '+settings.whatsapp,pageW-margin-40,12)}
+                    currentY+=headerH;
+                }
+                const startIdx=page*itemsPerPage;
+                const pageItems=products.slice(startIdx,startIdx+itemsPerPage);
+                const itemH=availableH/itemsPerPage;
+                pageItems.forEach((p,idx)=>{
+                    const y=currentY+idx*itemH;
+                    const imgH=itemH-15;
+                    try{doc.addImage(p.image,'JPEG',margin+5,y+2,pageW-margin*2-10,imgH,'','FAST')}catch(e){}
+                    doc.setDrawColor(220,220,220);doc.rect(margin,y,pageW-margin*2,itemH);
+                    if(p.name){doc.setTextColor(30,30,30);doc.setFontSize(9);doc.setFont(undefined,'bold');doc.text(p.name,pageW/2,y+imgH+8,{align:'center',maxWidth:pageW-margin*2-10})}
+                    if(p.price){
+                        const hex=settings.priceColor.replace('#','');
+                        doc.setTextColor(parseInt(hex.substr(0,2),16),parseInt(hex.substr(2,2),16),parseInt(hex.substr(4,2),16));
+                        doc.setFontSize(12);doc.setFont(undefined,'bold');
+                        doc.text(formatPrice(p.price),pageW/2,y+itemH-3,{align:'center'});
+                    }
+                });
+                doc.setTextColor(150);doc.setFontSize(8);doc.text(`Page ${page+1}/${totalPages}`,pageW/2,pageH-5,{align:'center'});
+            }
+            return doc;
+        }
+        $('downloadPdf').addEventListener('click',async()=>{
+            if(products.length===0)return showToast('No products');
+            showLoading('Generating PDF...');
+            try{const doc=await generatePDF();doc.save('catalog.pdf');hideLoading();showToast('PDF downloaded!')}
+            catch(e){hideLoading();showToast('Error generating PDF');console.error(e)}
+        });
+        $('sharePdf').addEventListener('click',async()=>{
+            if(products.length===0)return showToast('No products');
+            showLoading('Generating PDF...');
+            try{
+                const doc=await generatePDF();const blob=doc.output('blob');hideLoading();
+                if(navigator.share)await navigator.share({title:'Catalog',files:[new File([blob],'catalog.pdf',{type:'application/pdf'})]});
+                else doc.save('catalog.pdf');
+            }catch(e){hideLoading();showToast('Share failed')}
+        });
+        $('appSettingsBtn').addEventListener('click',()=>openSheet($('appSettingsSheet'),$('appSettingsBg')));
+        $('appSettingsBg').addEventListener('click',()=>closeSheet($('appSettingsSheet'),$('appSettingsBg')));
+        $('priceFormat').addEventListener('change',e=>{settings.priceFormat=e.target.value;saveData();render();updatePdfPreview()});
+        $('exportData').addEventListener('click',()=>{
+            const d={products,settings};
+            const b=new Blob([JSON.stringify(d,null,2)],{type:'application/json'});
+            const a=document.createElement('a');a.href=URL.createObjectURL(b);a.download='catalog-backup.json';a.click();showToast('Exported!');
+        });
+        $('importData').addEventListener('click',()=>$('importFile').click());
+        $('importFile').addEventListener('change',e=>{
+            const f=e.target.files[0];if(!f)return;
+            const r=new FileReader();
+            r.onload=e=>{
+                try{
+                    const d=JSON.parse(e.target.result);
+                    if(d.products)products=d.products;
+                    if(d.settings)settings={...settings,...d.settings};
+                    saveData();render();loadSettings();showToast('Imported!');
+                }catch(e){showToast('Invalid file')}
+            };
+            r.readAsText(f);
+        });
+        $('clearData').addEventListener('click',()=>{
+            if(confirm('Delete ALL data?')){
+                localStorage.clear();products=[];
+                settings={headerColor:'#1e40af',priceColor:'#dc2626',showName:1,showAddress:1,showWhatsapp:1,priceFormat:'chf'};
+                render();loadSettings();showToast('Cleared');
+            }
+        });
+        render();loadSettings();
+        
+        // Register Service Worker for PWA
+        if('serviceWorker' in navigator){
+            window.addEventListener('load',()=>{
+                navigator.serviceWorker.register('./service-worker.js')
+                    .then(reg=>console.log('Service Worker registered'))
+                    .catch(err=>console.log('Service Worker registration failed:',err));
+            });
+        }
+    </script>
+</body>
+</html>

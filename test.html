@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>File Check</title>
+    <style>
+        body{font-family:system-ui;padding:20px;max-width:600px;margin:0 auto}
+        h1{color:#2563eb}
+        .status{padding:10px;margin:10px 0;border-radius:8px}
+        .ok{background:#d1fae5;color:#065f46}
+        .error{background:#fee2e2;color:#991b1b}
+        .check{margin:10px 0;padding:8px;border-left:3px solid #ddd}
+        .check.ok{border-color:#10b981}
+        .check.error{border-color:#ef4444}
+    </style>
+</head>
+<body>
+    <h1>🔍 Catalog Maker - File Check</h1>
+    <p>Checking if all files are accessible...</p>
+    <div id="results"></div>
+    <script>
+        const files = [
+            'index.html',
+            'manifest.json',
+            'service-worker.js',
+            'icon-192.png',
+            'icon-512.png'
+        ];
+        
+        const results = document.getElementById('results');
+        let allOk = true;
+        
+        async function checkFile(file) {
+            try {
+                const response = await fetch(file);
+                const ok = response.ok;
+                if (!ok) allOk = false;
+                return {file, ok, status: response.status};
+            } catch (e) {
+                allOk = false;
+                return {file, ok: false, error: e.message};
+            }
+        }
+        
+        async function checkAll() {
+            for (const file of files) {
+                const result = await checkFile(file);
+                const div = document.createElement('div');
+                div.className = `check ${result.ok ? 'ok' : 'error'}`;
+                div.innerHTML = `
+                    <strong>${file}</strong>: 
+                    ${result.ok ? '✅ Found' : '❌ Missing'} 
+                    ${result.status ? `(${result.status})` : ''}
+                `;
+                results.appendChild(div);
+            }
+            
+            const summary = document.createElement('div');
+            summary.className = `status ${allOk ? 'ok' : 'error'}`;
+            summary.innerHTML = allOk 
+                ? '<strong>✅ All files found!</strong><br>Your app should work. Go to <a href="index.html">index.html</a>'
+                : '<strong>❌ Some files missing!</strong><br>Check TROUBLESHOOT.md';
+            results.insertBefore(summary, results.firstChild);
+        }
+        
+        checkAll();
+    </script>
+</body>
+</html>
